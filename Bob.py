@@ -1,33 +1,59 @@
+# Import required libraries
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives import hashes, hmac
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.serialization import load_pem_private_key, load_pem_public_key
+import os
+
+# What Bob Sends to Alice
+msg = []
+
+### Bobs Plaintext Message ###
+f = open("BobsPlaintextMessage.txt","r")
+message = f.read()
+f.close()
+
+#### KEY GENERATION ####
 
 
-# Generate a private key for Bob
-bob_private_key = rsa.generate_private_key(public_exponent=65537,key_size=2048)
+# Generate AES key for Bob
+bob_aes_key = os.urandom(32)
+iv = os.urandom(16)
 
-# Generate public keys for Bob
-bob_public_key = bob_private_key.public_key()
+#### KEY EXCHANGE ####
 
 # Get Alice's public key
-f = open("AlicesKey.txt","r")
-alice_public_key = f.read()
+with open("AlicePublicKey.txt", 'rb') as pem_in:
+    pemlines = pem_in.read()
 
+alice_public_key = load_pem_public_key(pemlines,default_backend())
 
+# Encrypt Bob's Message with AES
+cipher = Cipher(algorithms.AES(bob_aes_key), modes.CBC(iv), backend=default_backend())
+encryptor = cipher.encryptor()
+ciphertext = encryptor.update(bytes(message, 'ascii')*16) + encryptor.finalize()
+msg.append(ciphertext)
 
-# Bob encrypts a message for Alice
-message = b"Hello Alice!"
-ciphertext = alice_public_key.encrypt(message, padding.OAEP(
+# Encrypt AES key with Alice's public key
+ciphertext2 = alice_public_key.encrypt(bob_aes_key,padding.OAEP(
         mgf=padding.MGF1(algorithm=hashes.SHA256()),
         algorithm=hashes.SHA256(),
         label=None
     ))
-print(ciphertext)
+msg.append(ciphertext2)
 
-# Alice decrypts the message
-plaintext = alice_private_key.decrypt(ciphertext,padding.OAEP(
-        mgf=padding.MGF1(algorithm=hashes.SHA256()),
-        algorithm=hashes.SHA256(),
-        label=None
-    ))
-print(plaintext)
+# Create MAC
+h = hmac.HMAC(msg[0], hashes.SHA256(), backend=default_backend())
+signtaure = h.finalize()
+
+print(msg[0])
+msg.append(signtaure)
+
+# Send Message to Alice
+
+f = open("Transmitted_Data.txt","wb")
+for i in msg:
+    f.write(i)
+f.close()

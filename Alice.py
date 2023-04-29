@@ -1,51 +1,36 @@
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives import hashes, hmac
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.serialization import load_pem_private_key, load_pem_public_key
 
 
-# Generate a private key for Alice and Bob
-alice_private_key = rsa.generate_private_key(public_exponent=65537,key_size=2048)
+# Alice reads her private key
+with open("AlicePrivateKey.txt", 'rb') as pem_in:
+    alice_private_key = load_pem_private_key(pem_in.read(),password=None,backend=default_backend())
 
-# Generate public keys for Alice
-alice_public_key = alice_private_key.public_key()
+# Alice reads Bobs Message
+with open("Transmitted_Data.txt", 'rb') as pem_in:
+    ciphertext = pem_in.read()
 
+# Alice verifies the MAC
+h = hmac.HMAC(ciphertext[0:32], hashes.SHA256(), backend=default_backend())
+h.update(ciphertext[32:64])
+h.verify(ciphertext[64:])
+print("MAC Verified")
 
-# Alice sends her public key to Bob
-f = open("AlicesKey.txt","w")
-f.write(str(alice_public_key))
-f.close()
-
-
-# Alice encrypts a message for Bob
-message = b"Hello Bob!"
-ciphertext = bob_public_key.encrypt(message,padding.OAEP(
+# Alice decrypts the AES key
+bob_aes_key = alice_private_key.decrypt(ciphertext[32:64],padding.OAEP(
         mgf=padding.MGF1(algorithm=hashes.SHA256()),
         algorithm=hashes.SHA256(),
         label=None
     ))
-print(ciphertext)
-
-# Bob decrypts the message
-plaintext = bob_private_key.decrypt(ciphertext,padding.OAEP(
-        mgf=padding.MGF1(algorithm=hashes.SHA256()),
-        algorithm=hashes.SHA256(),
-        label=None
-    ))
-print(plaintext)
-
-# Bob encrypts a message for Alice
-message = b"Hello Alice!"
-ciphertext = alice_public_key.encrypt(message,padding.OAEP(
-        mgf=padding.MGF1(algorithm=hashes.SHA256()),
-        algorithm=hashes.SHA256(),
-        label=None
-    ))
-print(ciphertext)
 
 # Alice decrypts the message
-plaintext = alice_private_key.decrypt(ciphertext,padding.OAEP(
-        mgf=padding.MGF1(algorithm=hashes.SHA256()),
-        algorithm=hashes.SHA256(),
-        label=None
-    ))
-print(plaintext)
+cipher = Cipher(algorithms.AES(bob_aes_key), modes.CBC(ciphertext[64:80]), backend=default_backend())
+decryptor = cipher.decryptor()
+plaintext = decryptor.update(ciphertext[80:]) + decryptor.finalize()
+print("Plaintext: " + str(plaintext))
+
+
