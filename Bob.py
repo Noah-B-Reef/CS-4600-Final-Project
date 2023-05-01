@@ -20,7 +20,6 @@ f.close()
 
 # Generate AES key for Bob
 bob_aes_key = os.urandom(32)
-iv = os.urandom(16)
 iv = b'0000000000000000'
 
 #### KEY EXCHANGE ####
@@ -53,7 +52,6 @@ msg.append(signtaure)
 
 # Send Message to Alice
 
-print(msg[2])
 f = open("Transmitted_Data.txt","wb")
 for i in msg:
     f.write(i)
