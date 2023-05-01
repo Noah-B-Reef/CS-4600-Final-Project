@@ -21,6 +21,7 @@ f.close()
 # Generate AES key for Bob
 bob_aes_key = os.urandom(32)
 iv = os.urandom(16)
+iv = b'0000000000000000'
 
 #### KEY EXCHANGE ####
 
@@ -45,14 +46,14 @@ ciphertext2 = alice_public_key.encrypt(bob_aes_key,padding.OAEP(
 msg.append(ciphertext2)
 
 # Create MAC
-h = hmac.HMAC(msg[0], hashes.SHA256(), backend=default_backend())
+h = hmac.HMAC(b"test key",hashes.SHA256(), backend=default_backend())
+h.update(ciphertext)
 signtaure = h.finalize()
-
-print(msg[0])
 msg.append(signtaure)
 
 # Send Message to Alice
 
+print(msg[2])
 f = open("Transmitted_Data.txt","wb")
 for i in msg:
     f.write(i)

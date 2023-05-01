@@ -14,23 +14,25 @@ with open("AlicePrivateKey.txt", 'rb') as pem_in:
 with open("Transmitted_Data.txt", 'rb') as pem_in:
     ciphertext = pem_in.read()
 
+
 # Alice verifies the MAC
-h = hmac.HMAC(ciphertext[0:32], hashes.SHA256(), backend=default_backend())
-h.update(ciphertext[32:64])
-h.verify(ciphertext[64:])
+h = hmac.HMAC(b"test key", hashes.SHA256(), backend=default_backend())
+h.update(ciphertext[0:176])
+h.verify(ciphertext[432::])
 print("MAC Verified")
 
 # Alice decrypts the AES key
-bob_aes_key = alice_private_key.decrypt(ciphertext[32:64],padding.OAEP(
+bob_aes_key = alice_private_key.decrypt(ciphertext[176:432],padding.OAEP(
         mgf=padding.MGF1(algorithm=hashes.SHA256()),
         algorithm=hashes.SHA256(),
         label=None
     ))
 
 # Alice decrypts the message
-cipher = Cipher(algorithms.AES(bob_aes_key), modes.CBC(ciphertext[64:80]), backend=default_backend())
+iv = b'0000000000000000'
+cipher = Cipher(algorithms.AES(bob_aes_key), modes.CBC(iv), backend=default_backend())
 decryptor = cipher.decryptor()
-plaintext = decryptor.update(ciphertext[80:]) + decryptor.finalize()
+plaintext = decryptor.update(ciphertext[0:176]) + decryptor.finalize()
 print("Plaintext: " + str(plaintext))
 
 
