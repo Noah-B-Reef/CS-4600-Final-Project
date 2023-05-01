@@ -4,7 +4,7 @@ from cryptography.hazmat.primitives import hashes, hmac
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.serialization import load_pem_private_key, load_pem_public_key
-
+import math 
 
 # Alice reads her private key
 with open("AlicePrivateKey.txt", 'rb') as pem_in:
@@ -33,6 +33,7 @@ iv = b'0000000000000000'
 cipher = Cipher(algorithms.AES(bob_aes_key), modes.CBC(iv), backend=default_backend())
 decryptor = cipher.decryptor()
 plaintext = decryptor.update(ciphertext[0:176]) + decryptor.finalize()
-print("Plaintext: " + str(plaintext))
+length = math.floor(len(plaintext)/16) 
+print("Plaintext: " + str(plaintext[0:length]))
 
 
